@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How many attacks were successful in n intervals?</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4; /* Light background color */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333; /* Title color */
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex; /* Horizontal layout */
+            align-items: center; /* Center vertically */
+            margin-bottom: 20px; /* Space below controls */
+        }
+
+        label {
+            font-size: 18px; /* Font size for label */
+            color: #555; /* Label color */
+            margin-right: 10px; /* Space between label and input */
+        }
+
+        input[type="number"], input[type="range"] {
+            padding: 8px;
+            margin: 0 10px;
+            border: 1px solid #ccc; /* Border color */
+            border-radius: 4px; /* Rounded corners */
+            font-size: 16px; /* Font size */
+            width: 80px; /* Fixed width for consistency */
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #007bff; /* Button background color */
+            color: white; /* Button text color */
+            border: none;
+            border-radius: 4px; /* Rounded corners */
+            cursor: pointer; /* Cursor indicator */
+            font-size: 16px; /* Font size */
+            transition: background-color 0.3s; /* Transition on color change */
+            margin-top: 20px; /* Margin above button */
+        }
+
+        button:hover {
+            background-color: #0056b3; /* Button color on hover */
+        }
+
+        canvas {
+            border: 1px solid #ccc; /* Border color of canvas */
+            background-color: white; /* Background color of canvas */
+            margin-top: 30px; /* Margin above canvas to separate it */
+        }
+
+        h3 {
+            color: #007bff;
+        }
+
+        p {
+            color: #333;
+        }
+
+        u {
+            font-size: 2em;
+            color: #da0c0c;
+        }
+
+        ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .formula {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 18px;
+            margin: 10px 0;
+        }
+    </style>
+     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<h2>How many attacks were successful in n intervals? (Poisson Distribution)</h2>
+
+<div class="controls">
+    <label for="numAttackers">Number of Attackers:</label>
+    <input type="number" id="numAttackers" value="3" min="1" max="10">
+
+    <label for="n">n (number of intervals):</label>
+    <input type="number" id="n" value="10000" min="1" max="1000000000000000">
+
+    <label for="lambda">lambda (attackers' capability index):</label>
+    <input type="range" id="lambda" value="5000" min="0" max="10000">
+    <span id="lambdaValue">5000</span>
+</div>
+
+<button onclick="drawGraph()">Draw Graph</button>
+<!-- Ingrandito il canvas -->
+<canvas id="graphCanvas" width="2800" height="1850"></canvas>
+
+<script>
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    const margin = 60;  
+    const fixedAxisLength = 2000; // Ingrandito il grafico
+
+    function getColors(num) {
+        const colors = [];
+        for (let i = 0; i < num; i++) {
+            const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            colors.push(color);
+        }
+        return colors;
+    }
+
+    function drawAxes(n) {
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+        // X-axis (attacks made)
+        ctx.beginPath();
+        ctx.moveTo(margin, canvasHeight - margin);
+        ctx.lineTo(margin + fixedAxisLength, canvasHeight - margin);
+        ctx.strokeStyle = 'black'; // Black color
+        ctx.stroke();
+        
+        // Y-axis (successful attacks)
+        const leftAxisX = margin + fixedAxisLength;
+        ctx.beginPath();
+        ctx.moveTo(leftAxisX, canvasHeight - margin);
+        ctx.lineTo(leftAxisX, margin);
+        ctx.strokeStyle = 'black'; // Black color
+        ctx.stroke();
+        
+        // Y' axis (distributor of attackers)
+        const rightAxisX = leftAxisX + 300;
+        ctx.beginPath();
+        ctx.moveTo(rightAxisX, canvasHeight - margin);
+        ctx.lineTo(rightAxisX, margin);
+        ctx.strokeStyle = 'black'; // Black color
+        ctx.stroke();
+        
+        // Axis labels
+        ctx.font = "16px Arial"; // Font per tutte le scritte
+        ctx.fillStyle = 'black'; // Black color
+        ctx.fillText("Attacks Made (X)", margin + 10, canvasHeight - 40); // Moved to the far left
+        ctx.fillText("Successful Attacks (Y)", leftAxisX + 60, canvasHeight / 2); // Moved to the right
+        ctx.fillText("Number of Attackers", rightAxisX - 200, margin + 20); // Moved up and left of the Y' axis
+
+        // Y-axis labels (from 0 to n) with ticks
+        const stepY = (canvasHeight - 2 * margin) / n;  // Calculate distance between labels on the Y-axis
+        
+        for (let i = 0; i <= n; i++) {
+            if(i%(n/20) === 0){
+                const y = canvasHeight - margin - i * stepY;  // Position labels proportional to the length of the axis
+                // Draw ticks on the Y-axis
+                ctx.beginPath();
+                ctx.moveTo(leftAxisX - 10, y);
+                ctx.lineTo(leftAxisX + 10, y);
+                ctx.strokeStyle = 'black'; // Black color
+                ctx.stroke();
+                // Label with fixed size
+                ctx.font = "12px Arial"; // Fixed size
+                ctx.fillText(i, leftAxisX + 15, y + 3);  // Labels aligned along the Y-axis
+            }
+        }
+
+        // Y' axis labels (from 0 to n) with ticks
+        for (let i = 0; i <= n; i++) {
+            if(i%(n/20) === 0){
+                const y = canvasHeight - margin - i * stepY;  // Position labels proportional to the length of the axis
+                // Draw ticks on the Y'
+                ctx.beginPath();
+                ctx.moveTo(rightAxisX - 10, y);
+                ctx.lineTo(rightAxisX + 10, y);
+                ctx.strokeStyle = 'black'; // Black color
+                ctx.stroke();
+                // Label with fixed size
+                ctx.fillText(i, rightAxisX - 25, y + 3);  // Labels aligned along the Y'
+            }
+        }
+
+        ctx.font = "16px Arial"; // Restore original font size
+    }
+
+    function drawGraph() {
+        const numAttackers = parseInt(document.getElementById('numAttackers').value);
+        const n = parseInt(document.getElementById('n').value);
+        const lambda = parseInt(document.getElementById('lambda').value); // Convert to percentage
+        const colors = getColors(numAttackers);
+        
+        drawAxes(n);
+        
+        const attackersData = Array(numAttackers).fill(0);
+        const successCounts = Array(n + 1).fill(0); // Distribution
+
+        let mean = 0; // Mk starts at 0
+
+        // Adjust stepSize for number of attacks
+        const stepSize = fixedAxisLength / n;
+
+        // Simulate attacks for each attacker
+        for (let attackerIndex = 0; attackerIndex < numAttackers; attackerIndex++) {
+            let x = margin;
+            let y = canvasHeight - margin;
+            let successfulAttacks = 0;
+
+            ctx.strokeStyle = colors[attackerIndex % colors.length];
+
+            for (let i = 0; i < n; i++) {
+                let randomNum = Math.random();
+                
+                if (randomNum <= lambda/n) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);    
+                    y -= (canvasHeight - 2 * margin) / (n); // Vertical step for successful attack
+                    ctx.lineTo(x, y);
+                    x += stepSize;
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    successfulAttacks++;
+                } else {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    x += stepSize;
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                }
+            }
+
+            attackersData[attackerIndex] = successfulAttacks;
+            successCounts[successfulAttacks]++;
+
+            // Update mean using the recursive formula Mk = Mk−1 + (xk − Mk−1) / k
+            mean = mean + (successfulAttacks - mean) / (attackerIndex + 1); // Mk is the average after the last attack
+        }
+
+        drawSuccessDistribution(successCounts, n);
+
+        // Posizionato in basso a destra
+        ctx.fillText("Average Successes: " + mean.toFixed(2), canvasWidth - 250, canvasHeight - 30);
+    }
+
+    function drawSuccessDistribution(successCounts, n) {
+        const rightAxisX = margin + fixedAxisLength + 300;
+        const maxValue = Math.max(...successCounts); 
+        const barWidth = 5; 
+        
+        for (let i = 0; i <= n; i++) {
+            const y = (canvasHeight - margin - i * (canvasHeight - 2 * margin) / n);
+            const barHeight = (successCounts[i] / maxValue) * 200; 
+
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(rightAxisX, y, barHeight, barWidth);
+
+            // Adding values above the bars
+            ctx.fillStyle = 'black'; // Black color
+            if (successCounts[i] > 0) {
+                ctx.fillText(successCounts[i], rightAxisX + barHeight + 5, y + barWidth / 2);
+            }
+        }
+    }
+
+    // Update the value of the probability when the range changes
+    document.getElementById('lambda').addEventListener('input', function() {
+        document.getElementById('lambdaValue').innerText = this.value;
+    });
+
+    // Update lambda range when n changes
+    document.getElementById('n').addEventListener('input', function() {
+        const nValue = parseInt(this.value);
+        const lambdaInput = document.getElementById('lambda');
+        lambdaInput.max = nValue; // Set max to n
+        lambdaInput.value = Math.min(lambdaInput.value, nValue); // Adjust lambda value if needed
+        document.getElementById('probabilityValue').innerText = lambdaInput.value; // Update displayed lambda value
+    });
+</script>
+
+<!-- Additional Text Section -->
+<div style="margin-top: 30px; text-align: left; max-width: 800px;">
+    <u>Theoretical Concepts</u>
+    
+    <p>
+        Defining a "location" statistic or measure of central tendency involves describing a single value that captures the center or typical value of a distribution. There are several traditional and conceptual approaches to defining location statistics, each leading to a wide array of potential generalizations. Here, we'll explore various definitions, their generalizations, and how these can lead to infinite other definitions.
+    </p>
+
+    <h2>Traditional Definitions</h2>
+
+    <h3>Mean (Arithmetic Mean)</h3>
+    <p>
+        <strong>Definition:</strong> The sum of all values divided by the number of values.<br>
+        <strong>Generalization:</strong> Instead of a simple arithmetic mean, one could define a generalized mean that takes into account different weighting schemes (e.g., power means, harmonic means) or incorporate functions of the data.
+    </p>
+
+    <h3>Median</h3>
+    <p>
+        <strong>Definition:</strong> The middle value when data is ordered.<br>
+        <strong>Generalization:</strong> Weighted medians can be defined where different observations contribute differently to the central tendency based on specific criteria.
+    </p>
+
+    <h3>Mode</h3>
+    <p>
+        <strong>Definition:</strong> The most frequently occurring value in a dataset.<br>
+        <strong>Generalization:</strong> Extend the concept of mode to multiple modes (multimodal distributions) or define it in terms of the density of observations in continuous distributions.
+    </p>
+
+    <h2>Conceptual Extensions</h2>
+
+    <h3>Quantiles</h3>
+    <p>
+        <strong>Definition:</strong> Values that divide a dataset into equal parts (e.g., quartiles, quintiles).<br>
+        <strong>Generalization:</strong> Generalize to any fractional position, leading to an infinite number of quantiles, such as percentiles.
+    </p>
+
+    <h3>Winsorized Mean</h3>
+    <p>
+        <strong>Definition:</strong> A mean calculated after limiting extreme values (outliers).<br>
+        <strong>Generalization:</strong> Vary the trimming percentage, creating an infinite number of definitions based on the proportion of data excluded.
+    </p>
+
+    <h3>Expectation and Conditional Expectation</h3>
+    <p>
+        <strong>Definition:</strong> The mean of a random variable, incorporating probabilities.<br>
+        <strong>Generalization:</strong> Use different probability distributions or weighted distributions, leading to a vast range of expected values based on varying conditions.
+    </p>
+
+    <h2>Advanced and Alternative Definitions</h2>
+
+    <h3>Robust Measures</h3>
+    <p>
+        <strong>Definition:</strong> Statistics that are less influenced by outliers (e.g., trimmed mean, median absolute deviation).<br>
+        <strong>Generalization:</strong> Develop a continuum of robustness levels where one can define a "robustness parameter" to adjust the sensitivity to outliers.
+    </p>
+
+    <h3>Entropy-Based Measures</h3>
+    <p>
+        <strong>Definition:</strong> Measures of uncertainty or information (e.g., Shannon entropy) can also imply a central tendency by identifying the "most typical" state.<br>
+        <strong>Generalization:</strong> Create a new measure of central tendency based on relative entropy among different distributions.
+    </p>
+
+    <h3>Cluster Centers</h3>
+    <p>
+        <strong>Definition:</strong> The center of mass for clusters in a dataset.<br>
+        <strong>Generalization:</strong> Define centers based on different distance metrics or clustering algorithms, leading to infinite types of cluster centers (e.g., k-means, k-medoids).
+    </p>
+
+
+    
+    <br>
+    <br>
+    <u>Proof: The Mean Minimizes the Sum of Squared Distances</u>
+
+        <p>To prove that the arithmetic mean minimizes the sum of squared distances from a set of data points, we need to show that the mean is the best estimate that minimizes the total squared error.</p>
+
+        <h4>Problem Formulation</h4>
+        <p>Consider a set of \(n\) values \(x_1, x_2, \dots, x_n\), and we want to find a value \(c\) that minimizes the sum of the squared differences between \(c\) and each value in the set. This sum is expressed as:</p>
+
+        <p class="formula">
+            \( S(c) = \sum_{i=1}^{n} (x_i - c)^2 \)
+        </p>
+
+        <h4>Objective</h4>
+        <p>We need to show that the sum of squared differences \(S(c)\) is minimized when \(c\) is equal to the arithmetic mean \( \bar{x} \), which is defined as:</p>
+
+        <p class="formula">
+            \( \bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i \)
+        </p>
+
+        <h4>Steps of the Proof</h4>
+
+        <ol>
+            <li><strong>Define the Objective Function:</strong>
+                The objective function to minimize is the sum of squared differences:
+                <p class="formula">
+                    \( S(c) = \sum_{i=1}^{n} (x_i - c)^2 \)
+                </p>
+            </li>
+
+            <li><strong>Take the Derivative of the Function:</strong>
+                To minimize \(S(c)\), we need to calculate the derivative of \(S(c)\) with respect to \(c\) and find the value of \(c\) that sets the derivative equal to zero.
+                <p class="formula">
+                    \( \frac{dS(c)}{dc} = \frac{d}{dc} \left( \sum_{i=1}^{n} (x_i - c)^2 \right) \)
+                </p>
+                Applying the chain rule of differentiation, we get:
+                <p class="formula">
+                    \( \frac{dS(c)}{dc} = \sum_{i=1}^{n} 2(x_i - c)(-1) \)
+                </p>
+                This simplifies to:
+                <p class="formula">
+                    \( \frac{dS(c)}{dc} = -2 \sum_{i=1}^{n} (x_i - c) \)
+                </p>
+            </li>
+
+            <li><strong>Minimization Condition:</strong>
+                To find the value of \(c\) that minimizes \(S(c)\), we set the derivative equal to zero:
+                <p class="formula">
+                    \( -2 \left( \sum_{i=1}^{n} x_i - nc \right) = 0 \)
+                </p>
+                Solving for \(c\), we obtain:
+                <p class="formula">
+                    \( c = \frac{1}{n} \sum_{i=1}^{n} x_i \)
+                </p>
+                This shows that the sum of squared differences is minimized when \(c\) is equal to the arithmetic mean \( \bar{x} \).
+            </li>
+        </ol>
+
+        <h4>Conclusion</h4>
+        <p>We have demonstrated that the arithmetic mean \( \bar{x} \) minimizes the sum of squared differences \( \sum_{i=1}^{n} (x_i - c)^2 \). This means that the arithmetic mean is the optimal reference value that minimizes the total squared error with respect to the data.</p>
+
+
+</div>
+
+</body>
+</html>
