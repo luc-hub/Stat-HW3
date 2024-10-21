@@ -113,7 +113,7 @@
 
 <button onclick="drawGraph()">Draw Graph</button>
 <!-- Ingrandito il canvas -->
-<canvas id="graphCanvas" width="2800" height="1850"></canvas>
+<canvas id="graphCanvas" width="2800" height="1920"></canvas>
 
 <script>
     const canvas = document.getElementById('graphCanvas');
@@ -195,7 +195,7 @@
                 ctx.strokeStyle = 'black'; // Black color
                 ctx.stroke();
                 // Label with fixed size
-                ctx.fillText(i, rightAxisX - 25, y + 3);  // Labels aligned along the Y'
+                ctx.fillText(i, rightAxisX - 50, y + 3);  // Labels aligned along the Y'
             }
         }
 
